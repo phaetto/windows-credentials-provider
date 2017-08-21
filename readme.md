@@ -2,7 +2,9 @@
 # Windows Credential Provider
 _C#, .NET_
 
-There was no implementation in .NET that could work as credential provider in windows, so I made this.
+There was no implementation in .NET that could work as credential provider in windows,
+so I started this. I hope to have a full example at some point.
+
 The code is totally free for any use.
 
 ## *Read this before you start*

@@ -25,12 +25,11 @@
             {
                 await Client.PostAsync("http://localhost:5050/log", new StringContent(string.Format(LogContextFormat, text), Encoding.UTF8, "application/json"));
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 try
                 {
-                    Console.Write("NOT THROWN: ");
-                    Console.WriteLine(e);
+                    Console.WriteLine("(Skipped logging)");
                 }
                 catch (Exception)
                 {
@@ -39,12 +38,15 @@
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static string GetCurrentMethod()
+        public static void LogMethodCall()
         {
             StackTrace st = new StackTrace();
             StackFrame sf = st.GetFrame(1);
 
-            return sf.GetMethod().Name;
+            var methodBase = sf.GetMethod();
+#pragma warning disable 4014
+            LogText(methodBase.DeclaringType?.Name + "::" + methodBase.Name);
+#pragma warning restore 4014
         }
     }
 }
