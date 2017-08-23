@@ -1,18 +1,16 @@
 ﻿namespace TestConsoleApp
 {
+    using System;
     using System.Net;
 
     class Program
     {
         static void Main(string[] args)
         {
-            //ITestWindowsCredentialProvider pC = new TestWindowsCredentialProvider();
-            //IntPtr pUnk = Marshal.GetIUnknownForObject(pC);
-            //IntPtr pI;
-            //var guidBase = typeof(ICredentialProvider).GUID;
-            //var hr = Marshal.QueryInterface(pUnk, ref guidBase, out pI);
-
             var networkCredential = CredentialsDialog.GetCredentials("Hey!", "We would like a login.");
+
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
         }
     }
 }
