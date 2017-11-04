@@ -5,7 +5,7 @@
     using CredentialProvider.Interop;
 
     [ComVisible(true)]
-    [Guid("062AF153-00EF-4DFE-9A57-222A9309657B")]
+    [Guid(Constants.CredentialProviderTileUID)]
     [ClassInterface(ClassInterfaceType.None)]
     public sealed class TestWindowsCredentialProviderTile : ITestWindowsCredentialProviderTile
     {

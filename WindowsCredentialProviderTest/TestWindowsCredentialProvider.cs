@@ -5,7 +5,7 @@
     using CredentialProvider.Interop;
 
     [ComVisible(true)]
-    [Guid("298D9F84-9BC5-435C-9FC2-EB3746625954")]
+    [Guid(Constants.CredentialProviderUID)]
     [ClassInterface(ClassInterfaceType.None)]
     [ProgId("Rebootify.TestWindowsCredentialProvider")]
     public class TestWindowsCredentialProvider : ITestWindowsCredentialProvider
