@@ -66,17 +66,19 @@ namespace WindowsCredentialProviderTest
         {
             Log.LogMethodCall();
 
-            if (!CredentialProviderFieldDescriptorList
-                .Any(x => x.dwFieldID == dwFieldID
-                            && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT))
+            var searchFunction = FieldSearchFunctionGenerator(dwFieldID, new []
+            {
+                _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT,
+                _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_LARGE_TEXT,
+            });
+
+            if (!CredentialProviderFieldDescriptorList.Any(searchFunction))
             {
                 ppsz = string.Empty;
                 return HResultValues.E_NOTIMPL;
             }
 
-            var descriptor = CredentialProviderFieldDescriptorList
-                .First(x => x.dwFieldID == dwFieldID
-                                     && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT);
+            var descriptor = CredentialProviderFieldDescriptorList.First(searchFunction);
 
             ppsz = descriptor.pszLabel;
             return HResultValues.S_OK;
@@ -85,14 +87,38 @@ namespace WindowsCredentialProviderTest
         public int GetBitmapValue(uint dwFieldID, IntPtr phbmp)
         {
             Log.LogMethodCall();
+
+            var searchFunction = FieldSearchFunctionGenerator(dwFieldID, new[] { _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_TILE_IMAGE });
+
+            if (!CredentialProviderFieldDescriptorList.Any(searchFunction))
+            {
+                phbmp = IntPtr.Zero;
+                return HResultValues.E_NOTIMPL;
+            }
+
+            var descriptor = CredentialProviderFieldDescriptorList.First(searchFunction);
+            phbmp = IntPtr.Zero; // TODO: show a bitmap
+
             return HResultValues.E_NOTIMPL;
         }
 
         public int GetCheckboxValue(uint dwFieldID, out int pbChecked, out string ppszLabel)
         {
             Log.LogMethodCall();
-            pbChecked = 0;
-            ppszLabel = string.Empty;
+
+            var searchFunction = FieldSearchFunctionGenerator(dwFieldID, new[] { _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_CHECKBOX });
+
+            if (!CredentialProviderFieldDescriptorList.Any(searchFunction))
+            {
+                pbChecked = 0;
+                ppszLabel = string.Empty;
+                return HResultValues.E_NOTIMPL;
+            }
+
+            var descriptor = CredentialProviderFieldDescriptorList.First(searchFunction);
+            pbChecked = 0; // TODO: selection state
+            ppszLabel = descriptor.pszLabel;
+
             return HResultValues.E_NOTIMPL;
         }
 
@@ -100,19 +126,17 @@ namespace WindowsCredentialProviderTest
         {
             Log.LogMethodCall();
 
-            if (!CredentialProviderFieldDescriptorList
-                .Any(x => x.dwFieldID == dwFieldID
-                          && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON))
+            var searchFunction = FieldSearchFunctionGenerator(dwFieldID, new [] { _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON });
+
+            if (!CredentialProviderFieldDescriptorList.Any(searchFunction))
             {
                 pdwAdjacentTo = 0;
                 return HResultValues.E_NOTIMPL;
             }
 
-            var descriptor = CredentialProviderFieldDescriptorList
-                .First(x => x.dwFieldID == dwFieldID
-                            && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON);
+            var descriptor = CredentialProviderFieldDescriptorList.First(searchFunction);
 
-            pdwAdjacentTo = descriptor.dwFieldID - 1;
+            pdwAdjacentTo = descriptor.dwFieldID - 1; // TODO: selection state
 
             return HResultValues.S_OK;
         }
@@ -120,8 +144,20 @@ namespace WindowsCredentialProviderTest
         public int GetComboBoxValueCount(uint dwFieldID, out uint pcItems, out uint pdwSelectedItem)
         {
             Log.LogMethodCall();
-            pcItems = 0;
+
+            var searchFunction = FieldSearchFunctionGenerator(dwFieldID, new[] { _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_COMBOBOX });
+
+            if (!CredentialProviderFieldDescriptorList.Any(searchFunction))
+            {
+                pcItems = 0;
+                pdwSelectedItem = 0;
+                return HResultValues.E_NOTIMPL;
+            }
+
+            var descriptor = CredentialProviderFieldDescriptorList.First(searchFunction);
+            pcItems = 0; // TODO: selection state
             pdwSelectedItem = 0;
+
             return HResultValues.E_NOTIMPL;
         }
 
@@ -135,24 +171,36 @@ namespace WindowsCredentialProviderTest
         public int SetStringValue(uint dwFieldID, string psz)
         {
             Log.LogMethodCall();
+
+            // TODO: change state
+
             return HResultValues.E_NOTIMPL;
         }
 
         public int SetCheckboxValue(uint dwFieldID, int bChecked)
         {
             Log.LogMethodCall();
+
+            // TODO: change state
+
             return HResultValues.E_NOTIMPL;
         }
 
         public int SetComboBoxSelectedValue(uint dwFieldID, uint dwSelectedItem)
         {
             Log.LogMethodCall();
+
+            // TODO: change state
+
             return HResultValues.E_NOTIMPL;
         }
 
         public int CommandLinkClicked(uint dwFieldID)
         {
             Log.LogMethodCall();
+
+            // TODO: change state
+
             return HResultValues.E_NOTIMPL;
         }
 
@@ -232,6 +280,13 @@ namespace WindowsCredentialProviderTest
             PInvoke.LsaDeregisterLogonProcess(lsaHandle);
 
             return (int)status;
+        }
+
+        private Func<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR, bool> FieldSearchFunctionGenerator(uint dwFieldID, _CREDENTIAL_PROVIDER_FIELD_TYPE[] allowedFieldTypes)
+        {
+            return x =>
+                x.dwFieldID == dwFieldID
+                && allowedFieldTypes.Contains(x.cpft);
         }
     }
 }
