@@ -1,4 +1,7 @@
-﻿namespace WindowsCredentialProviderTest
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace WindowsCredentialProviderTest
 {
     using System;
     using System.Runtime.InteropServices;
@@ -9,6 +12,22 @@
     [ClassInterface(ClassInterfaceType.None)]
     public sealed class TestWindowsCredentialProviderTile : ITestWindowsCredentialProviderTile
     {
+        public _CREDENTIAL_PROVIDER_USAGE_SCENARIO UsageScenario { get; set; }
+        public List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> CredentialProviderFieldDescriptorList = new List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> {
+            new _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR
+            {
+                cpft = _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT,
+                dwFieldID = 0,
+                pszLabel = "Rebootify Awesomeness",
+            },
+            new _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR
+            {
+                cpft = _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON,
+                dwFieldID = 1,
+                pszLabel = "Login",
+            }
+        };
+
         public int Advise(ICredentialProviderCredentialEvents pcpce)
         {
             Log.LogMethodCall();
@@ -46,7 +65,20 @@
         public int GetStringValue(uint dwFieldID, out string ppsz)
         {
             Log.LogMethodCall();
-            ppsz = "Rebootify";
+
+            if (!CredentialProviderFieldDescriptorList
+                .Any(x => x.dwFieldID == dwFieldID
+                            && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT))
+            {
+                ppsz = string.Empty;
+                return HResultValues.E_NOTIMPL;
+            }
+
+            var descriptor = CredentialProviderFieldDescriptorList
+                .First(x => x.dwFieldID == dwFieldID
+                                     && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT);
+
+            ppsz = descriptor.pszLabel;
             return HResultValues.S_OK;
         }
 
@@ -67,8 +99,22 @@
         public int GetSubmitButtonValue(uint dwFieldID, out uint pdwAdjacentTo)
         {
             Log.LogMethodCall();
-            pdwAdjacentTo = 0;
-            return HResultValues.E_NOTIMPL;
+
+            if (!CredentialProviderFieldDescriptorList
+                .Any(x => x.dwFieldID == dwFieldID
+                          && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON))
+            {
+                pdwAdjacentTo = 0;
+                return HResultValues.E_NOTIMPL;
+            }
+
+            var descriptor = CredentialProviderFieldDescriptorList
+                .First(x => x.dwFieldID == dwFieldID
+                            && x.cpft == _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SUBMIT_BUTTON);
+
+            pdwAdjacentTo = descriptor.dwFieldID - 1;
+
+            return HResultValues.S_OK;
         }
 
         public int GetComboBoxValueCount(uint dwFieldID, out uint pcItems, out uint pdwSelectedItem)

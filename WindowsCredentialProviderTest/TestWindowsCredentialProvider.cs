@@ -12,13 +12,7 @@
     {
         private bool isDisposing;
         private ICredentialProviderEvents credentialProviderEvents;
-        private ITestWindowsCredentialProviderTile credentialTile = new TestWindowsCredentialProviderTile();
-        private _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR credentialProviderFieldDescriptor = new _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR
-        {
-            cpft = _CREDENTIAL_PROVIDER_FIELD_TYPE.CPFT_SMALL_TEXT,
-            dwFieldID = 0,
-            pszLabel = "Rebootify Awesomeness",
-        };
+        private TestWindowsCredentialProviderTile credentialTile = new TestWindowsCredentialProviderTile();
 
         public TestWindowsCredentialProvider()
         {
@@ -29,13 +23,15 @@
         {
             Log.LogMethodCall();
 
+            credentialTile.UsageScenario = cpus;
+
             switch (cpus)
             {
                 case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_CREDUI:
                     return HResultValues.S_OK;
 
-                case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_UNLOCK_WORKSTATION:
                 case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_LOGON:
+                case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_UNLOCK_WORKSTATION:
                 case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_CHANGE_PASSWORD:
                 case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_PLAP:
                 case _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_INVALID:
@@ -76,13 +72,15 @@
                 credentialProviderEvents = null;
             }
 
+            // TODO: clean up memory
+
             return HResultValues.S_OK;
         }
 
         public int GetFieldDescriptorCount(out uint pdwCount)
         {
             Log.LogMethodCall();
-            pdwCount = 1;
+            pdwCount = (uint)credentialTile.CredentialProviderFieldDescriptorList.Count;
             return HResultValues.S_OK;
         }
 
@@ -90,14 +88,15 @@
         {
             Log.LogMethodCall();
 
-            if (dwIndex > 0)
+            if (dwIndex >= credentialTile.CredentialProviderFieldDescriptorList.Count)
             {
                 return HResultValues.E_INVALIDARG;
             }
 
             // TODO: garbage collect
-            var pcpfd = Marshal.AllocHGlobal(Marshal.SizeOf(credentialProviderFieldDescriptor)); /* _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* */
-            Marshal.StructureToPtr(credentialProviderFieldDescriptor, pcpfd, false); /* pcpfd = &credentialProviderFieldDescriptor */
+            var listItem = credentialTile.CredentialProviderFieldDescriptorList[(int) dwIndex];
+            var pcpfd = Marshal.AllocHGlobal(Marshal.SizeOf(listItem)); /* _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* */
+            Marshal.StructureToPtr(listItem, pcpfd, false); /* pcpfd = &CredentialProviderFieldDescriptorList */
             Marshal.StructureToPtr(pcpfd, ppcpfd, false); /* *ppcpfd = pcpfd */
 
             return HResultValues.S_OK;
@@ -107,7 +106,7 @@
         {
             Log.LogMethodCall();
 
-            pdwCount = 1;
+            pdwCount = 1; // Credential tiles number
             pdwDefault = unchecked ((uint)-1);
             pbAutoLogonWithDefault = 0;
             return HResultValues.S_OK;
