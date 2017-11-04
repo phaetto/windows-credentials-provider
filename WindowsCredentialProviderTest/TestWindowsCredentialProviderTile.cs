@@ -161,6 +161,47 @@ namespace WindowsCredentialProviderTest
             out _CREDENTIAL_PROVIDER_STATUS_ICON pcpsiOptionalStatusIcon)
         {
             Log.LogMethodCall();
+
+            try
+            {
+                pcpgsr = _CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE.CPGSR_RETURN_CREDENTIAL_FINISHED;
+                pcpcs = new _CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION();
+
+                var username = "<domain>\\<username>";
+                var password = "<password>";
+                var inCredSize = 0;
+                var inCredBuffer = Marshal.AllocCoTaskMem(0);
+
+                if (!PInvoke.CredPackAuthenticationBuffer(0, username, password, inCredBuffer, ref inCredSize))
+                {
+                    Marshal.FreeCoTaskMem(inCredBuffer);
+                    inCredBuffer = Marshal.AllocCoTaskMem(inCredSize);
+
+                    if (PInvoke.CredPackAuthenticationBuffer(0, username, password, inCredBuffer, ref inCredSize))
+                    {
+                        ppszOptionalStatusText = string.Empty;
+                        pcpsiOptionalStatusIcon = _CREDENTIAL_PROVIDER_STATUS_ICON.CPSI_SUCCESS;
+
+                        pcpcs.clsidCredentialProvider = Guid.Parse(Constants.CredentialProviderUID);
+                        pcpcs.rgbSerialization = inCredBuffer;
+                        pcpcs.cbSerialization = (uint)inCredSize;
+
+                        RetrieveNegotiateAuthPackage(out var authPackage);
+                        pcpcs.ulAuthenticationPackage = authPackage;
+
+                        return HResultValues.S_OK;
+                    }
+
+                    ppszOptionalStatusText = "Failed to pack credentials";
+                    pcpsiOptionalStatusIcon = _CREDENTIAL_PROVIDER_STATUS_ICON.CPSI_ERROR;
+                    return HResultValues.E_FAIL;
+                }
+            }
+            catch (Exception)
+            {
+                // In case of any error, do not bring down winlogon
+            }
+
             pcpgsr = _CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE.CPGSR_NO_CREDENTIAL_NOT_FINISHED;
             pcpcs = new _CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION();
             ppszOptionalStatusText = string.Empty;
@@ -175,6 +216,22 @@ namespace WindowsCredentialProviderTest
             ppszOptionalStatusText = string.Empty;
             pcpsiOptionalStatusIcon = _CREDENTIAL_PROVIDER_STATUS_ICON.CPSI_NONE;
             return HResultValues.E_NOTIMPL;
+        }
+
+        private int RetrieveNegotiateAuthPackage(out uint authPackage)
+        {
+            // TODO: better checking on the return codes
+
+            var status = PInvoke.LsaConnectUntrusted(out var lsaHandle);
+
+            using (var name = new PInvoke.LsaStringWrapper("Negotiate"))
+            {
+                status = PInvoke.LsaLookupAuthenticationPackage(lsaHandle, ref name._string, out authPackage);
+            }
+
+            PInvoke.LsaDeregisterLogonProcess(lsaHandle);
+
+            return (int)status;
         }
     }
 }
