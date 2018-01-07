@@ -10,7 +10,6 @@
     [ProgId("Rebootify.TestWindowsCredentialProvider")]
     public class TestWindowsCredentialProvider : ITestWindowsCredentialProvider
     {
-        private bool isDisposing;
         private ICredentialProviderEvents credentialProviderEvents;
         private TestWindowsCredentialProviderTile credentialTile = new TestWindowsCredentialProviderTile();
 
