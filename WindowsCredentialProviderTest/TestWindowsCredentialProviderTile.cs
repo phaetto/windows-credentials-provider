@@ -1,13 +1,15 @@
-﻿// #define AUTOLOGIN
+﻿// Uncomment for autologin
+// #define AUTOLOGIN
+
+using CredentialProvider.Interop;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using WindowsCredentialProviderTest.OnDemandLogon;
 
 namespace WindowsCredentialProviderTest
 {
-    using System;
-    using System.Runtime.InteropServices;
-    using CredentialProvider.Interop;
-
     [ComVisible(true)]
     [Guid(Constants.CredentialProviderTileUID)]
     [ClassInterface(ClassInterfaceType.None)]
@@ -31,6 +33,9 @@ namespace WindowsCredentialProviderTest
         private readonly TestWindowsCredentialProvider testWindowsCredentialProvider;
         private readonly _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario;
         private ICredentialProviderCredentialEvents credentialProviderCredentialEvents;
+        private TimerOnDemandLogon timerOnDemandLogon;
+        private bool shouldAutoLogin = false;
+
         public TestWindowsCredentialProviderTile(
             TestWindowsCredentialProvider testWindowsCredentialProvider,
             _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario
@@ -71,13 +76,46 @@ namespace WindowsCredentialProviderTest
         public int SetSelected(out int pbAutoLogon)
         {
             Log.LogMethodCall();
-            pbAutoLogon = 0;
-            return HResultValues.E_NOTIMPL;
+
+#if AUTOLOGIN 
+            if (!shouldAutoLogin)
+            {
+                timerOnDemandLogon = new TimerOnDemandLogon(
+                    testWindowsCredentialProvider.CredentialProviderEvents,
+                    credentialProviderCredentialEvents,
+                    this,
+                    CredentialProviderFieldDescriptorList[0].dwFieldID,
+                    testWindowsCredentialProvider.CredentialProviderEventsAdviseContext);
+
+                timerOnDemandLogon.TimerEnded += TimerOnDemandLogon_TimerEnded;
+
+                pbAutoLogon = 0;
+            }
+            else
+            {
+                // We got the info from the async timer
+                pbAutoLogon = 1;
+            }
+#else
+            pbAutoLogon = 0; // Auto-logon when the tile is selected
+#endif
+
+            return HResultValues.S_OK;
+        }
+
+        private void TimerOnDemandLogon_TimerEnded()
+        {
+            // Sync other data from your async service here
+            shouldAutoLogin = true;
         }
 
         public int SetDeselected()
         {
             Log.LogMethodCall();
+
+            timerOnDemandLogon?.Dispose();
+            timerOnDemandLogon = null;
+
             return HResultValues.E_NOTIMPL;
         }
 
