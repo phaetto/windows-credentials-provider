@@ -110,8 +110,8 @@
             Log.LogMethodCall();
 
             pdwCount = 1; // Credential tiles number
-            pdwDefault = unchecked ((uint)-1);
-            pbAutoLogonWithDefault = 0;
+            pdwDefault = unchecked ((uint)0);
+            pbAutoLogonWithDefault = 0; // Try to auto-logon when all credential managers are enumerated (before the tile selection)
             return HResultValues.S_OK;
         }
 
