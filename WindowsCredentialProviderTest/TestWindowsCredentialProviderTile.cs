@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿// #define AUTOLOGIN
+using System.Collections.Generic;
 using System.Linq;
 
 namespace WindowsCredentialProviderTest
@@ -12,7 +13,6 @@ namespace WindowsCredentialProviderTest
     [ClassInterface(ClassInterfaceType.None)]
     public sealed class TestWindowsCredentialProviderTile : ITestWindowsCredentialProviderTile
     {
-        public _CREDENTIAL_PROVIDER_USAGE_SCENARIO UsageScenario { get; set; }
         public List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> CredentialProviderFieldDescriptorList = new List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> {
             new _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR
             {
@@ -28,16 +28,44 @@ namespace WindowsCredentialProviderTest
             }
         };
 
+        private readonly TestWindowsCredentialProvider testWindowsCredentialProvider;
+        private readonly _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario;
+        private ICredentialProviderCredentialEvents credentialProviderCredentialEvents;
+        public TestWindowsCredentialProviderTile(
+            TestWindowsCredentialProvider testWindowsCredentialProvider,
+            _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario
+        )
+        {
+            this.testWindowsCredentialProvider = testWindowsCredentialProvider;
+            this.usageScenario = usageScenario;
+        }
+
         public int Advise(ICredentialProviderCredentialEvents pcpce)
         {
             Log.LogMethodCall();
-            return HResultValues.E_NOTIMPL;
+
+            if (pcpce != null)
+            {
+                credentialProviderCredentialEvents = pcpce;
+                var intPtr = Marshal.GetIUnknownForObject(pcpce);
+                Marshal.AddRef(intPtr);
+            }
+
+            return HResultValues.S_OK;
         }
 
         public int UnAdvise()
         {
             Log.LogMethodCall();
-            return HResultValues.E_NOTIMPL;
+
+            if (credentialProviderCredentialEvents != null)
+            {
+                var intPtr = Marshal.GetIUnknownForObject(credentialProviderCredentialEvents);
+                Marshal.Release(intPtr);
+                credentialProviderCredentialEvents = null;
+            }
+
+            return HResultValues.S_OK;
         }
 
         public int SetSelected(out int pbAutoLogon)
