@@ -315,6 +315,10 @@ namespace WindowsCredentialProviderTest
             {
                 // In case of any error, do not bring down winlogon
             }
+            finally
+            {
+                shouldAutoLogin = false; // Block auto-login from going full-retard
+            }
 
             pcpgsr = _CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE.CPGSR_NO_CREDENTIAL_NOT_FINISHED;
             pcpcs = new _CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION();

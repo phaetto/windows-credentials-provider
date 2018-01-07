@@ -56,6 +56,7 @@ namespace WindowsCredentialProviderTest.OnDemandLogon
 
         public void Dispose()
         {
+            timer?.Change(int.MaxValue, int.MaxValue);
             timer?.Dispose();
         }
 
