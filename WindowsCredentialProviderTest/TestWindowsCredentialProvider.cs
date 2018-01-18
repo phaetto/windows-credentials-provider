@@ -10,9 +10,10 @@
     [ProgId("Rebootify.TestWindowsCredentialProvider")]
     public class TestWindowsCredentialProvider : ITestWindowsCredentialProvider
     {
-        private bool isDisposing;
-        private ICredentialProviderEvents credentialProviderEvents;
-        private TestWindowsCredentialProviderTile credentialTile = new TestWindowsCredentialProviderTile();
+        private _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario = _CREDENTIAL_PROVIDER_USAGE_SCENARIO.CPUS_INVALID;
+        private TestWindowsCredentialProviderTile credentialTile = null;
+        internal ICredentialProviderEvents CredentialProviderEvents;
+        internal uint CredentialProviderEventsAdviseContext = 0;
 
         public TestWindowsCredentialProvider()
         {
@@ -23,7 +24,7 @@
         {
             Log.LogMethodCall();
 
-            credentialTile.UsageScenario = cpus;
+            usageScenario = cpus;
 
             switch (cpus)
             {
@@ -53,7 +54,8 @@
 
             if (pcpe != null)
             {
-                credentialProviderEvents = pcpe;
+                CredentialProviderEventsAdviseContext = upAdviseContext;
+                CredentialProviderEvents = pcpe;
                 var intPtr = Marshal.GetIUnknownForObject(pcpe);
                 Marshal.AddRef(intPtr);
             }
@@ -65,11 +67,12 @@
         {
             Log.LogMethodCall();
 
-            if (credentialProviderEvents != null)
+            if (CredentialProviderEvents != null)
             {
-                var intPtr = Marshal.GetIUnknownForObject(credentialProviderEvents);
+                var intPtr = Marshal.GetIUnknownForObject(CredentialProviderEvents);
                 Marshal.Release(intPtr);
-                credentialProviderEvents = null;
+                CredentialProviderEvents = null;
+                CredentialProviderEventsAdviseContext = 0;
             }
 
             // TODO: clean up memory
@@ -107,14 +110,20 @@
             Log.LogMethodCall();
 
             pdwCount = 1; // Credential tiles number
-            pdwDefault = unchecked ((uint)-1);
-            pbAutoLogonWithDefault = 0;
+            pdwDefault = unchecked ((uint)0);
+            pbAutoLogonWithDefault = 0; // Try to auto-logon when all credential managers are enumerated (before the tile selection)
             return HResultValues.S_OK;
         }
 
         public int GetCredentialAt(uint dwIndex, out ICredentialProviderCredential ppcpc)
         {
             Log.LogMethodCall();
+
+            if (credentialTile == null)
+            {
+                credentialTile = new TestWindowsCredentialProviderTile(this, usageScenario);
+            }
+
             ppcpc = (ICredentialProviderCredential)credentialTile;
             return HResultValues.S_OK;
         }

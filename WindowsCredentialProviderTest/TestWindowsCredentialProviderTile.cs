@@ -1,18 +1,20 @@
-﻿using System.Collections.Generic;
+﻿// Uncomment for autologin
+// #define AUTOLOGIN
+
+using CredentialProvider.Interop;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using WindowsCredentialProviderTest.OnDemandLogon;
 
 namespace WindowsCredentialProviderTest
 {
-    using System;
-    using System.Runtime.InteropServices;
-    using CredentialProvider.Interop;
-
     [ComVisible(true)]
     [Guid(Constants.CredentialProviderTileUID)]
     [ClassInterface(ClassInterfaceType.None)]
     public sealed class TestWindowsCredentialProviderTile : ITestWindowsCredentialProviderTile
     {
-        public _CREDENTIAL_PROVIDER_USAGE_SCENARIO UsageScenario { get; set; }
         public List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> CredentialProviderFieldDescriptorList = new List<_CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR> {
             new _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR
             {
@@ -28,28 +30,92 @@ namespace WindowsCredentialProviderTest
             }
         };
 
+        private readonly TestWindowsCredentialProvider testWindowsCredentialProvider;
+        private readonly _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario;
+        private ICredentialProviderCredentialEvents credentialProviderCredentialEvents;
+        private TimerOnDemandLogon timerOnDemandLogon;
+        private bool shouldAutoLogin = false;
+
+        public TestWindowsCredentialProviderTile(
+            TestWindowsCredentialProvider testWindowsCredentialProvider,
+            _CREDENTIAL_PROVIDER_USAGE_SCENARIO usageScenario
+        )
+        {
+            this.testWindowsCredentialProvider = testWindowsCredentialProvider;
+            this.usageScenario = usageScenario;
+        }
+
         public int Advise(ICredentialProviderCredentialEvents pcpce)
         {
             Log.LogMethodCall();
-            return HResultValues.E_NOTIMPL;
+
+            if (pcpce != null)
+            {
+                credentialProviderCredentialEvents = pcpce;
+                var intPtr = Marshal.GetIUnknownForObject(pcpce);
+                Marshal.AddRef(intPtr);
+            }
+
+            return HResultValues.S_OK;
         }
 
         public int UnAdvise()
         {
             Log.LogMethodCall();
-            return HResultValues.E_NOTIMPL;
+
+            if (credentialProviderCredentialEvents != null)
+            {
+                var intPtr = Marshal.GetIUnknownForObject(credentialProviderCredentialEvents);
+                Marshal.Release(intPtr);
+                credentialProviderCredentialEvents = null;
+            }
+
+            return HResultValues.S_OK;
         }
 
         public int SetSelected(out int pbAutoLogon)
         {
             Log.LogMethodCall();
-            pbAutoLogon = 0;
-            return HResultValues.E_NOTIMPL;
+
+#if AUTOLOGIN 
+            if (!shouldAutoLogin)
+            {
+                timerOnDemandLogon = new TimerOnDemandLogon(
+                    testWindowsCredentialProvider.CredentialProviderEvents,
+                    credentialProviderCredentialEvents,
+                    this,
+                    CredentialProviderFieldDescriptorList[0].dwFieldID,
+                    testWindowsCredentialProvider.CredentialProviderEventsAdviseContext);
+
+                timerOnDemandLogon.TimerEnded += TimerOnDemandLogon_TimerEnded;
+
+                pbAutoLogon = 0;
+            }
+            else
+            {
+                // We got the info from the async timer
+                pbAutoLogon = 1;
+            }
+#else
+            pbAutoLogon = 0; // Auto-logon when the tile is selected
+#endif
+
+            return HResultValues.S_OK;
+        }
+
+        private void TimerOnDemandLogon_TimerEnded()
+        {
+            // Sync other data from your async service here
+            shouldAutoLogin = true;
         }
 
         public int SetDeselected()
         {
             Log.LogMethodCall();
+
+            timerOnDemandLogon?.Dispose();
+            timerOnDemandLogon = null;
+
             return HResultValues.E_NOTIMPL;
         }
 
@@ -248,6 +314,10 @@ namespace WindowsCredentialProviderTest
             catch (Exception)
             {
                 // In case of any error, do not bring down winlogon
+            }
+            finally
+            {
+                shouldAutoLogin = false; // Block auto-login from going full-retard
             }
 
             pcpgsr = _CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE.CPGSR_NO_CREDENTIAL_NOT_FINISHED;
