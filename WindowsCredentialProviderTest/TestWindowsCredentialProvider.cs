@@ -75,8 +75,6 @@
                 CredentialProviderEventsAdviseContext = 0;
             }
 
-            // TODO: clean up memory
-
             return HResultValues.S_OK;
         }
 
@@ -96,9 +94,8 @@
                 return HResultValues.E_INVALIDARG;
             }
 
-            // TODO: garbage collect
             var listItem = credentialTile.CredentialProviderFieldDescriptorList[(int) dwIndex];
-            var pcpfd = Marshal.AllocHGlobal(Marshal.SizeOf(listItem)); /* _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* */
+            var pcpfd = Marshal.AllocCoTaskMem(Marshal.SizeOf(listItem)); /* _CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR* */
             Marshal.StructureToPtr(listItem, pcpfd, false); /* pcpfd = &CredentialProviderFieldDescriptorList */
             Marshal.StructureToPtr(pcpfd, ppcpfd, false); /* *ppcpfd = pcpfd */
 
